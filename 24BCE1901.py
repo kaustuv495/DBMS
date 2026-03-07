@@ -74,14 +74,18 @@ class MySQLConnectionManager:
         """
         return self.connection.cursor(dictionary=dictionary)
 @st.cache_resource(show_spinner=False)
-def get_connection_manager() -> MySQLConnectionManager:
-    """
-    Return a cached instance of ``MySQLConnectionManager``.
-    The configuration is derived from the ``DB_CONFIG`` constant. For real
-    deployments, consider reading credentials from environment variables
-    or Streamlit secrets instead of hard-coding them.
-    """
-    return MySQLConnectionManager(**DB_CONFIG)
+def get_connection_manager():
+    try:
+        # Try connecting to your real local DB
+        return MySQLConnectionManager(**DB_CONFIG)
+    except Exception:
+        # If it fails (like on the Cloud), return a 'Mock' object so the app doesn't crash
+        class MockManager:
+            def __enter__(self): return self
+            def __exit__(self, *args): pass
+            def execute_query(self, query, params=None): return []
+        return MockManager()
+    
 def execute_query(
     manager: MySQLConnectionManager,
     query: str,
@@ -874,4 +878,5 @@ def run_app() -> None:
 if __name__ == "__main__":
     run_app();
     
+
 
