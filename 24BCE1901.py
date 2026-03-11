@@ -76,15 +76,20 @@ class MySQLConnectionManager:
 @st.cache_resource(show_spinner=False)
 def get_connection_manager():
     try:
-        # Try connecting to your real local DB
+        # 1. Attempt real local connection
         return MySQLConnectionManager(**DB_CONFIG)
     except Exception:
-        # If it fails (like on the Cloud), return a 'Mock' object so the app doesn't crash
+        # 2. CLOUD FAIL-SAFE: Create a "Mock" object so the UI doesn't crash
         class MockManager:
             def __enter__(self): return self
             def __exit__(self, *args): pass
-            def execute_query(self, query, params=None): return []
+            @property
+            def connection(self): 
+                return None # This stops the AttributeError!
+            def execute_query(self, query, params=None):
+                return [] # Returns empty data instead of crashing
         return MockManager()
+
     
 def execute_query(
     manager: MySQLConnectionManager,
@@ -146,6 +151,12 @@ def initialize_schema(manager: MySQLConnectionManager) -> None:
     All foreign keys are defined with ``ON DELETE CASCADE`` to preserve
     referential integrity and enable clean cascading deletions.
     """
+    if manager is None or not hasattr(manager, 'connection') or manager.connection is None:
+        st.warning("⚠️ Running in Cloud/Mock Mode: Database connection unavailable.")
+        return # This stops the AttributeError from happening
+    try :
+        # Your existing schema creation logic goes here
+        cursor = manager.connection.cursor()
     ddl_statements = [
         """
         CREATE TABLE IF NOT EXISTS Resources (
@@ -235,6 +246,11 @@ def initialize_schema(manager: MySQLConnectionManager) -> None:
     ]
     conn = manager.connection
     cur = conn.cursor()
+except Exception as e:
+        st.error(f"Schema Error: {e}")
+
+
+        
     try:
         for ddl in ddl_statements:
             cur.execute(ddl)
@@ -878,5 +894,6 @@ def run_app() -> None:
 if __name__ == "__main__":
     run_app();
     
+
 
 
