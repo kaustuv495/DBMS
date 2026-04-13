@@ -101,7 +101,8 @@ def render_dashboard(manager):
     
     # 4 metrics for a "Full" look
     c1, c2, c3, c4 = st.columns(4)
-    t_count = execute_query(manager, "SELECT COUNT(*) as c FROM Incidents WHERE status != 'Closed'", fetch=True)[0]['c']
+    result = execute_query(manager, "SELECT COUNT(*) as c FROM Incidents WHERE status != 'Closed'", fetch=True)
+t_count = result[0]['c'] if result else 0
     a_count = execute_query(manager, "SELECT COUNT(*) as c FROM Resources", fetch=True)[0]['c']
     
     c1.metric("Active Threats", t_count, delta="-1", delta_color="inverse")
